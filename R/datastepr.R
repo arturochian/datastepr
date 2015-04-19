@@ -74,3 +74,5 @@ datastep = R6::R6Class(
       .dots = lazyeval::lazy_dots(...)
       
       self$output_(.dots)}))
+
+teststep = datastep$new()
