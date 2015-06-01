@@ -1,7 +1,7 @@
 Package: datastepr
 Type: Package
 Title: An implementation of a data step
-Version: 1.0
+Version: 0.0.1
 Date: 2015-04-06
 Author: Brandon Taylor
 Maintainer: Brandon Taylor <brandon.taylor221@gmail.com>
