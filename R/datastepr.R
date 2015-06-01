@@ -1,76 +1,149 @@
-#' An implementation of a data-step
+globalVariables(".")
+
+#' Append an object to an environment
 #' 
-#' @docType class
+#' A function to coerce an object to a list and append the list to an environment
+#' 
+#' @importFrom magrittr %>%
 #' @export
-#' @importFrom pipeR %>>%
+#' 
+#' @param object An object which can be coerced to a list (e.g. an environment)
+#' @param environment An environment
+#' 
+#' @return An appended environment
+#' 
+toEnv = function(object, environment)
+  object %>%
+  as.list %>%
+  list2env(environment)
+
+#' Append an object to a dataframe.
+#' 
+#' Convert an object to a list, select only vector entries, coerce to a data.frame, 
+#' and append to the given data frame.
+#' 
+#' @importFrom magrittr %>%
+#' @export
+#' 
+#' @param object An object which can be coerced to a list (e.g. an environment)
+#' @param dataframe A data frame
+#' 
+#' @return An appended dataframe
+#' 
+toDf = function(object, dataframe)
+  append =
+  object %>%
+  as.list %>%
+  rlist::list.filter(is.vector(.)) %>%
+  as.data.frame %>%
+  dplyr::bind_rows(dataframe, .)
+  
+#' An implementation of a SAS datastep in a class
+#'  
+#' @docType class
 #' @format An \code{\link{R6Class}} generator object
 #' 
+#' @importFrom R6 R6Class
+#' @importFrom magrittr %>%
+#' @importFrom lazyeval lazy
+#' @export
+#' 
 #' @section Fields:
-#'   \describe{
-#'     \item{\code{i}}{An index variable}}
+#' 
+#' \describe{\item{\code{i}}{
+#'     \code{i} begins at 0 and is incremented for each iteration of the data step.}}
 #'   
-#'   \describe{
-#'     \item{\code{envir}}{An environment for evaluation}}
+#' \describe{\item{\code{results}}{
+#'    The \code{results} frame is initialized as an empty data frame. 
+#' It is populated row-wise with each iteration of the data step.}}
 #'   
-#'   \describe{
-#'     \item{\code{results}}{A dataframe of results}}
-#'     
-#' @section Methods:
-#'   \describe{\item{\code{set(df)}}{Import all values in row 
-#'     \code{self$i} of \code{df} into \code{self$env}}}
+#' \describe{\item{\code{continue}}{
+#'     \code{continue} is a marker which signals that the step should 
+#' continue repeating. When \code{continue} is 1, repetition will continue, and when 
+#' \code{continue} is 0, repitition will cease. It is initialized to 0.}}
+#'   
+#' \describe{\item{\code{eval}}{
+#'     \code{eval} is initialized as NULL, but will store a pointer to 
+#' the current evaluation environment. This pointer is helps pass the evaluation 
+#' environment from one iteration of the data step to the next.}}
 #'
-#'   \describe{\item{\code{lag_(.dots)}}{\code{\link{select_}(.dots)} from the last row of 
-#'     \code{self$results} and import into \code{self$env}}}
-#'     
-#'   \describe{\item{\code{lag(...)}}{\code{\link{select}(...)} from the last row of 
-#'     \code{self$results} and import into \code{self$env}}}
-#'     
-#'   \describe{\item{\code{output_(.dots)}}{Convert the environment to a dataframe,  
-#'     using only vectors, \code{\link{select_}(.dots)} and \code{\link{bind_cols}} 
-#'     onto \code{self$results}}}
-datastep = R6::R6Class(
-  "datastep",
+#' @section Methods:
+#' 
+#' \describe{\item{\code{begin(env)}}{
+#'     \code{begin} does three things: imports the environment of the previous 
+#' step to the current, stores the current environment (or the environment specified), 
+#' and increments \code{i} by 1. It takes one argument, \code{envir}, which should 
+#' typically be set to \code{environment()}.}}
+#' 
+#' \describe{\item{\code{set(dataframe, id)}}{
+#'     \code{set} takes two arguments: a data frame and an unquoted \code{id} 
+#' variable. This \code{id} variable must contain a consecutive sequence of natural 
+#' numbers from 1 to some maximum. In each data step, rows where the \code{id} 
+#' variable matches \code{i} are selected, and the slice is split into vectors 
+#' and imported into the evaluation environment. \code{continue} is set to 0 once 
+#' \code{set} reaches the maximum value in the \code{id} column, ceasing repetition 
+#' of the datastep, else \code{continue} is set to 1.}}
+#' 
+#' \describe{\item{\code{set_(dataframe, id)}}{
+#'     A standard evaluation version of \code{set_}, in which the \code{id} 
+#' variable is included as a string, formula, or lazy object.}}
+#' 
+#' \describe{\item{\code{output}}{
+#'     \code{output} takes no argument. All vectors in the evaluation environment 
+#' are gathered into a data.frame, and this data.frame is appended to \code{results}.}}
+#' 
+#' \describe{\item{\code{end}}{\code{end} will, if \code{continue} is 1, evaluate 
+#' the function given within the evaluation environment. Typically, the function 
+#' given will be the current function: that is, steps are joined recursively.}}
+#'
+dataStepClass = R6::R6Class(
+  "dataStepClass",
   public = list(
-    
-    envir = new.env(),
-    
+    i = 0,
+    continue = 0,
     results = data.frame(),
+    eval = NULL,
     
-    i = 1,
+    begin = function(env) {
+      # transfer in old environment
+      self$eval %>% toEnv(env)
+      # evaluate within new environment
+      self$eval = env
+      # iterate
+      self$i = self$i + 1
+    },
     
-    set = function(df)
-      df[self$i,] %>>%
-      list2env(self$envir),
-    
-    lag_ = function(.dots)
-      if (self$i > 1) {
-        
-        self$results[nrow(self$results),] %>>%
-        dplyr::select_(.dots = .dots) %>>%
-        list2env(self$envir)} else {
-          
-          nulls = rep(NA, length(.dots))
-          names(nulls) = names(.dots)
-          list2env(as.list(nulls), self$envir)},
-    
-    lag = function(...) {
-      .dots = lazyeval::lazy_dots(...)
-      self$lag_(.dots)},
-    
-    output_ = function(.dots = NULL) {
+    set_ = function(dataframe, id) {
+      #do some lazy interpretation
+      filter = lazyeval::lazy(id == self$i) %>%
+        lazyeval::interp(id = id)
       
-      row = self$envir %>>%
-        as.list %>>%
-        magrittr::extract(sapply(., function(x) is.vector(x))) %>>%
-        as.data.frame
+      max = lazyeval::lazy(max(dataframe$id)) %>%
+        lazyeval::interp(id = id) %>%
+        lazyeval::lazy_eval()
       
-      if(length(.dots) > 0)
-         row = row %>>% dplyr::select_(.dots = .dots)
-
-      self$results = dplyr::bind_rows(self$results, row)
-      return(NULL)},
-
-    output = function(...) {
-      .dots = lazyeval::lazy_dots(...)
+      #add dataframe slice to the environment
+      dataframe %>%
+        dplyr::filter_(filter) %>% 
+        toEnv(self$eval)
       
-      self$output_(.dots)}))
+      # if we've reached the end, mark for the end of recursion
+      if (self$i != max) self$continue = 1 else self$continue = 0
+    },
+    
+    set = function(dataframe, id) {
+      self$set_(dataframe, lazyeval::lazy(id))
+    },
+    
+    output = function() {
+      # add eval contents to results dataframe
+      self$results = self$eval %>% toDf(self$results)
+    },
+    
+    end = function(FUN) {
+      if (step$continue == 1) 
+        do.call(FUN, args = list(), envir = self$eval)
+      # if marked for recursion, recur within the eval environment
+    }
+  )
+)
