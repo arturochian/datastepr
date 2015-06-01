@@ -1,8 +1,8 @@
 Package: datastepr
 Type: Package
-Title: An implementation of a data step
+Title: An Implementation of a Data Step
 Version: 0.0.1
-Date: 2015-04-06
+Date: 2015-06-01
 Author: Brandon Taylor
 Maintainer: Brandon Taylor <brandon.taylor221@gmail.com>
 Description: Based on a SAS data step. Allows row-wise dynamic building of data.
