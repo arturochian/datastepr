@@ -1,0 +1,77 @@
+---
+title: "Data Stepping"
+author: "Brandon Taylor"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Data Stepping}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+First, let's import `dplyr` and `magrittr` (because they're useful), `knitr` (for table output), and, of course, `datastepr`.
+```{r, message=FALSE}
+library(dplyr)
+library(datastepr)
+library(magrittr)
+library(knitr)
+```
+
+The basic idea behind this package was inspired by SAS data steps. In each step, the environment is populated by a slice of data from a data frame. Then, operations are performed. The environment is whole-sale appended to a `results` data frame. Then, the datastep repeats.
+
+# Datastep
+Let's begin with a brief tour of the `dataStepClass`. First, create an instance.
+
+```{r}
+step = dataStepClass$new()
+```
+
+Please read the dataStepClass documentation before continuing, which is extensive.
+```{r}
+?dataStepClass()
+```
+
+# Examples
+Our example will be Euler's method for solving differential equations. In fact, it is unimportant if you understand the method itself. The differential equation to be solved is given below:
+$$ \dfrac{dy}{dx} = xy $$
+
+Here is our initial dataset. The x values are the series of x values over which the method will be applied, and the group_id marks the order in which values will be input into the datastep. In this case, the first set of input x's will be c(0, 5) and the second set will be c(1, 6). The grouping allows us to evaluate two separate series in parallel, one from 0-4 (in the top position), and one from 5-9 (in the bottom position).
+
+```{r}
+dataframe = data.frame(x = 0:9, group_id = 1:5)
+
+dataframe %>% kable
+```
+
+Now here is our stair function. First, `begin` is called, setting up an evaluation environment in the function's `environment()`. Next,  each of our two series (in the top and bottom positions) get a unique initial value: 1 and 2 respectively. A lag of x is stored. This is important, because after the `set` call, x is overwritten using a slice of the dataframe above. Then, a new y is estimated using the new x, the lag of x, and the derivative estimate (in all but the first step). Next, a derivative is estimated for use in the next step (see equation above). Finally, we output each of our two series twice. In the first output, the first series is labeled 1 and the second labeled 2. In next, the first series is labeled 3 and the second 4. This is purely to show that output called be called as many times as necessary, and in any position in the datastep. In fact, this is also the case for `set`.
+```{r}
+stairs = function(...) {
+  step$begin(environment())
+
+  if (step$i == 1) y = c(1, 2)
+
+  if (step$i > 1) lagx = x
+
+  step$set(dataframe, group_id)
+  
+  if (step$i > 1) y = y + dydx*(x - lagx)
+ 
+  dydx = x*y
+
+  series_id = c(1, 2)
+  step$output()
+  series_id = c(3, 4)
+  step$output()
+  
+  step$end(stairs)
+}
+
+stairs()
+```
+
+Let's take a look at our results! Four series should be visible: 3 and 4 are replicas of 1 and 2. The difference between series 1 and 2 are first, the initial values, and second, the sequence of x values used.
+```{r}
+step$results %>%
+  arrange(series_id) %>%
+  kable
+```
