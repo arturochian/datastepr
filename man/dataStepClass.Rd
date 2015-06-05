@@ -41,24 +41,26 @@ step to the current, stores the current environment (or the environment specifie
 and increments \code{i} by 1. It takes one argument, \code{envir}, which should
 typically be set to \code{environment()}.}}
 
-\describe{\item{\code{set(dataframe, id)}}{
-    \code{set} takes two arguments: a data frame and an unquoted \code{id}
-variable. This \code{id} variable must contain a consecutive sequence of natural
-numbers from 1 to some maximum. In each data step, rows where the \code{id}
-variable matches \code{i} are selected, and the slice is split into vectors
-and imported into the evaluation environment. \code{continue} is set to 0 once
-\code{set} reaches the maximum value in the \code{id} column, ceasing repetition
-of the datastep, else \code{continue} is set to 1.}}
+\describe{\item{\code{set(dataframe, group_id)}}{
+    \code{set} takes two arguments: a data frame and an onptional unquoted \code{group_id}
+variable. This \code{group_id} variable must contain a consecutive sequence of natural
+numbers from 1 to some maximum. In each data step, rows where \code{i} matches the
+\code{group_id} variable (or simply the ith row if no group_id variable is given) are selected,
+and the slice is split into vectors and imported into the evaluation environment.
+\code{continue} is set to 0 once \code{set} reaches the maximum value in the \code{group_id}
+column, ceasing repetition of the datastep, else \code{continue} is set to 1.}}
 
-\describe{\item{\code{set_(dataframe, id)}}{
-    A standard evaluation version of \code{set_}, in which the \code{id}
+\describe{\item{\code{set_(dataframe, group_id)}}{
+    A standard evaluation version of \code{set_}, in which the \code{group_id}
 variable is included as a string, formula, or lazy object.}}
 
 \describe{\item{\code{output}}{
-    \code{output} takes no argument. All vectors in the evaluation environment
-are gathered into a data.frame, and this data.frame is appended to \code{results}.}}
+    \code{output} takes an optional list argument. Either the list, or, if none is given,
+all vectors in the evaluation environment are gathered into a data.frame, and this data.frame
+appended to \code{results}.}}
 
-\describe{\item{\code{end}}{\code{end} will, if \code{continue} is 1, evaluate
+\describe{\item{\code{end}}{
+    \code{end} will, if \code{continue} is 1, evaluate
 the function given within the evaluation environment. Typically, the function
 given will be the current function: that is, steps are joined recursively.}}
 }
