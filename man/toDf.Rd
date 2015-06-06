@@ -18,4 +18,8 @@ An appended dataframe
 Convert an object to a list, select only vector entries, coerce to a data.frame,
 and append to the given data frame.
 }
+\examples{
+toDf(list(a = 1, b = 2), data.frame())
+toDf(environment(), data.frame())
+}
 

@@ -12,6 +12,10 @@ globalVariables(".")
 #' 
 #' @return An appended environment
 #' 
+#' @examples
+#' toEnv(data.frame(a = 1, b = 2), environment())
+#' toEnv(list(a = 1, b = 2), environment())
+#' toEnv(environment(), new.env())
 toEnv = function(object, environment)
   object %>%
   as.list %>%
@@ -30,6 +34,9 @@ toEnv = function(object, environment)
 #' 
 #' @return An appended dataframe
 #' 
+#' @examples
+#' toDf(list(a = 1, b = 2), data.frame())
+#' toDf(environment(), data.frame())
 toDf = function(object, dataframe)
   append =
     object %>%
@@ -97,7 +104,23 @@ toDf = function(object, dataframe)
   #'     \code{end} will, if \code{continue} is 1, evaluate 
   #' the function given within the evaluation environment. Typically, the function 
   #' given will be the current function: that is, steps are joined recursively.}}
-  #'
+  #' 
+  #' @examples
+  #' step = dataStepClass$new()
+  #' 
+  #' frame = data.frame(x = 1:10)
+  #' 
+  #' stairs = function() {
+  #'   step$begin(environment())
+  #'   step$set(frame)
+  #'   y = x + 1
+  #'   step$output()
+  #'   step$end(stairs)
+  #' }
+  #' 
+  #' stairs()
+  #' 
+  #' step$results
   dataStepClass = R6::R6Class(
     "dataStepClass",
     public = list(
@@ -118,7 +141,7 @@ toDf = function(object, dataframe)
       set_ = function(dataframe, group_id) {
         
         if (missing("group_id")) {
-          slice = dataframe %>% slice(self$i)
+          slice = dataframe %>% dplyr::slice(self$i)
           max = nrow(dataframe) 
         } else {
           #do some lazy interpretation

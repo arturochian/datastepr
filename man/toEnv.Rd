@@ -17,4 +17,9 @@ An appended environment
 \description{
 A function to coerce an object to a list and append the list to an environment
 }
+\examples{
+toEnv(data.frame(a = 1, b = 2), environment())
+toEnv(list(a = 1, b = 2), environment())
+toEnv(environment(), new.env())
+}
 

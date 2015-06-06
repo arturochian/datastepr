@@ -64,5 +64,22 @@ appended to \code{results}.}}
 the function given within the evaluation environment. Typically, the function
 given will be the current function: that is, steps are joined recursively.}}
 }
+\examples{
+step = dataStepClass$new()
+
+frame = data.frame(x = 1:10)
+
+stairs = function() {
+  step$begin(environment())
+  step$set(frame)
+  y = x + 1
+  step$output()
+  step$end(stairs)
+}
+
+stairs()
+
+step$results
+}
 \keyword{datasets}
 
